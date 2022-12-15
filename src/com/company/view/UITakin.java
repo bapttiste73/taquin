@@ -1,18 +1,18 @@
 package com.company.view;
 
 import com.company.Agent;
-import com.company.Direction;
 import com.company.Grid;
-import com.company.Position;
 import processing.core.PApplet;
+
+import static java.lang.Thread.sleep;
 
 public class UITakin extends PApplet {
 
     /** 🛠 Paramètres 🛠 */
     final int cellSize = 100;
-    final int nbCell = 5;
-    static final int nbAgent = 8;
-    /** Paramètres */
+    final int nbCell = 4;
+    static final int nbAgent = 9;
+    /** 🛠 Paramètres 🛠 */
 
     int cols, rows;
     static Grid grid;
@@ -29,38 +29,43 @@ public class UITakin extends PApplet {
     }
 
     public void setup(){
-        frameRate(1);
+        frameRate(60);
+        for (Agent a : grid.getAgents()) {
+            Thread t = new Thread(a);
+            t.start();
+        }
     }
 
-    public void draw(){
-        // On dessine la case
+    public void background(){
         for (int i = 0; i < cols; i++) {
             // Begin loop for rows
             for (int j = 0; j < rows; j++) {
 
                 // Scaling up to draw a rectangle at (x,y)
-                int x = i*cellSize;
-                int y = j*cellSize;
+                int x = i * cellSize;
+                int y = j * cellSize;
                 fill(255);
                 stroke(0);
+
                 // For every column and row, a rectangle is drawn at an (x,y) location scaled and sized by videoScale.
                 rect(x, y, cellSize, cellSize);
             }
         }
+        for(Agent a : grid.getAgents()){
+            displayTarget(a);
+        }
+    }
 
-        // Dessine les agents
-
+    public void draw(){
+        background();
         for (Agent a : grid.getAgents()){
-            Thread t = new Thread(a);
-            t.start();
-
+            a.run();
             displayAgent(a);
         }
     }
 
     public static void main(String[] args){
         grid = new Grid();
-
         grid.generateRandomAgents(UITakin.nbAgent);
 
         String[] processingArgs = {"UITakin"};
@@ -68,20 +73,13 @@ public class UITakin extends PApplet {
         PApplet.runSketch(processingArgs, uiTakin);
     }
 
-    public void displayAgent(Agent a){
-//        //Start
-//        fill(Color.GREEN.getRGB());
-//        rect(a.getStart().getX()*cellSize, a.getStart().getY()*cellSize, cellSize, cellSize);
-
-        //Target
+    public void displayTarget(Agent a){
         fill(a.getColor().getRGB());
         rect(a.getTarget().getX()*cellSize, a.getTarget().getY()*cellSize, cellSize, cellSize);
+    }
 
-//        if(a.getImageFile().isEmpty()){
-//            PImage imgAgent = loadImage(a.getImageFile());
-//            image(imgAgent, a.getCurrentPos().getX()*cellSize, a.getCurrentPos().getY()*cellSize);
-//      }
-        circle(a.getCurrentPos().getX()*cellSize + cellSize/2, a.getCurrentPos().getY()*cellSize + cellSize/2, cellSize);
-
+    public void displayAgent(Agent a){
+        fill(a.getColor().getRGB());
+        circle(a.getCurrentPos().getX()*cellSize + cellSize/2, a.getCurrentPos().getY()*cellSize + cellSize/2, cellSize*0.75f);
     }
 }
