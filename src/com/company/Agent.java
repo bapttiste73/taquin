@@ -3,6 +3,7 @@ package com.company;
 import java.awt.*;
 import java.util.*;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 public class Agent extends Thread implements Runnable{
@@ -14,6 +15,8 @@ public class Agent extends Thread implements Runnable{
     private ArrayList<Message> messages;
     private Grid grid;
     private boolean isWaiting = false; //True si il a envoyer un message et qu'il attend
+    private ReentrantLock lock;
+
 
     public Agent(Position start, Position target, Grid grid) {
         this.setStart(start);
@@ -22,6 +25,7 @@ public class Agent extends Thread implements Runnable{
         this.setRandomColor();
         this.setGrid(grid);
 
+        this.lock = new ReentrantLock();
         this.messages = new ArrayList<Message>();
     }
 
@@ -29,58 +33,59 @@ public class Agent extends Thread implements Runnable{
     public void run() {
 
         List<Position> path = this.calculateMinPath();
-
-        if(!path.isEmpty()){ //Si on est déjà au bon endroit
-            try {
-                this.move(this.getDirectionFromPosition(this.getCurrentPos(),path.get(0)));
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+        if(this.getGrid().isOver()){
+            return;
+        }
+        if(this.getMessages().isEmpty()){
+            this.setWaiting(false);
         }
 
         if(!this.getMessages().isEmpty()){
-            Message m = this.getMessages().get(0);
-            while (this.getCurrentPos().equals(m.getDestination())){
-                this.move(this.randomMoveFromPosition(this.getCurrentPos()));
-            }
-            this.getMessages().remove(this.getMessages().size()-1);
+            Message firstMessage = this.getMessages().get(this.getMessages().size()-1);
+            System.out.println(firstMessage);
+            this.handleMessage(firstMessage);
+            this.setWaiting(true);
+        }else if(!path.isEmpty()) {
+            Position newPosition = path.get(0);
+            Agent blockingAgent = this.moveBlockedByAgent(newPosition);
 
-            try {
-                sleep(20);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            };
+            if(blockingAgent != null){
+                Message m = new Message(this, newPosition);
+                m.send(blockingAgent); // On envoie le message à l'agent qui bloque
+            }else{
+                this.move(this.getDirectionFromPosition(this.getCurrentPos(), newPosition));
+            }
         }
     }
 
-    public void move(Direction d){
-        Position newPosition = this.getPositionFromDirection(d);
-        Agent blockingAgent = this.moveBlockedByAgent(newPosition);
+    public boolean move(Direction d){
 
-        if (blockingAgent == null) { //Si l'agent n'est pas bloqué par un autre alors il se déplace normalement
+        Position newPosition = this.getPositionFromDirection(d);
+        boolean moved = false;
+
+        if(this.moveAllowed(newPosition)){
             this.setCurrentPos(newPosition);
-        } else { // Si il est bloqué
-            Message m = new Message(this, newPosition);
-            blockingAgent.receive(m); // Il envoie un message à l'agent qui le bloque
+            moved = true;
+        } else {
+            //Si il est bloqué par un agent
+            System.out.println("erreur Move interdit");
+            System.out.println(this.getCurrentPos());
+            System.out.println(newPosition);
+            System.out.println("---");
         }
+        tempo();
+        return moved;
+
 
     }
 
     public boolean moveAllowed(Position p){
 
-        boolean moveAllowed = true;
-
-        if(p.getX() >= 0 && p.getX() < Grid.gridSize && p.getY() >= 0 && p.getY() < Grid.gridSize){
-            for (Agent a: this.grid.getAgents()) {
-                if(p.equals(a.getCurrentPos())){
-                    moveAllowed = false;
-                }
-            }
+        if(this.moveAllowedInGrid(p) && this.moveBlockedByAgent(p) == null){
+            return true;
         }else{
-            moveAllowed = false;
+            return false;
         }
-
-        return moveAllowed;
     }
 
     public boolean moveAllowedInGrid(Position p){
@@ -88,12 +93,17 @@ public class Agent extends Thread implements Runnable{
     }
 
     public Agent moveBlockedByAgent(Position p){
-        for (Agent a: this.grid.getAgents()) {
-            if(p.equals(a.getCurrentPos())){
-                return a;
+//        lock.lock();
+        try {
+            for (Agent a: this.grid.getAgents()) {
+                if(p.equals(a.getCurrentPos())){
+                    return a;
+                }
             }
+            return null;
+        } finally {
+//            lock.unlock();
         }
-        return null;
     }
 
     public ArrayList<Position> calculateMinPath(){
@@ -138,17 +148,15 @@ public class Agent extends Thread implements Runnable{
                 .collect(Collectors.toList());
     }
 
-    public Direction getDirectionFromPosition(Position start, Position target) throws Exception {
+    public Direction getDirectionFromPosition(Position start, Position target){
         if(start.getX() < target.getX()){
             return Direction.RIGHT;
         }else if(start.getX() > target.getX()){
             return Direction.LEFT;
         }else if(start.getY() < target.getY()){
             return Direction.DOWN;
-        }else if(start.getY() > target.getY()){
-            return Direction.UP;
         }else{
-            throw new Exception("Direction Introuvable");
+            return Direction.UP;
         }
     }
 
@@ -167,50 +175,45 @@ public class Agent extends Thread implements Runnable{
             case UP:
                 p.setY(p.getY()-1);
                 break;
+            default:
+                System.out.println("probl_me");
+                break;
         }
         return p;
     }
 
-    public Direction randomMoveFromPosition(Position p){
-        // @Todo Essayez de lui faire choisir la meilleure position pour se décaler plutot que de l'Aleatoire
-        // Récupérer les valeurs de l'énumération
-        Direction[] directions = Direction.values();
+    public void handleMessage(Message message){
+        if(message != null) {
 
-        // Créer un générateur de nombres aléatoires
-        Random random = new Random();
+                Queue<Position> queue = new PriorityQueue<Position>(
+                        3,
+                        Comparator.comparingInt(p -> ((this.getGrid().positionIsAvailable(p) ? 25 : 50) - 10))
+                );
 
-        // Créer un set pour stocker les valeurs de l'énumération déjà testées
-        Set<Direction> tested = new HashSet<>();
-
-        // Répéter l'opération jusqu'à ce que toutes les valeurs de l'énumération aient été testées
-        while (tested.size() < directions.length) {
-            // Générer un nombre aléatoire entre 0 et la taille de l'énumération
-            int index = random.nextInt(directions.length);
-
-            // Récupérer la valeur de l'énumération à l'index généré
-            Direction direction = directions[index];
-
-            // Vérifier que la valeur n'a pas déjà été testée
-            if (!tested.contains(direction)) {
-                // Ajouter la valeur au set des valeurs testées
-                tested.add(direction);
-
-                if(this.moveAllowedInGrid(this.getPositionFromDirection(direction))){
-                    return direction;
+            for (Position p : this.findNeighbors(this.getCurrentPos())) {
+                Agent a = this.moveBlockedByAgent(p);
+                if ((a == null) || !message.getSender().equals(a)) {
+                    queue.add(p);
                 }
             }
+
+            boolean moved = false;
+            while (!queue.isEmpty() && !moved) {
+                Position current = queue.poll();
+                boolean free = true;
+                if (!this.getGrid().positionIsAvailable(current)) {
+                    free = message.getSender().move(this.getDirectionFromPosition(message.getSender().getCurrentPos(),current));
+                }
+                moved = free && move(this.getDirectionFromPosition(this.getCurrentPos(), current));
+            }
+
+            if(moved){
+                this.setWaiting(false);
+                this.getMessages().remove(message);
+                tempo();
+            }
         }
-        return null;
     }
-
-    public void receive(Message m ){
-        this.addMessage(m);
-
-        //Je libère ma place
-        this.move(this.randomMoveFromPosition(this.getCurrentPos()));
-        this.getMessages().get(0).getSender().setWaiting(false);
-    }
-
 
     public Position getStart() {
         return start;
@@ -266,7 +269,7 @@ public class Agent extends Thread implements Runnable{
         isWaiting = waiting;
     }
 
-    private boolean isWaiting() {
+    public boolean isWaiting() {
         return isWaiting;
     }
 
@@ -275,5 +278,14 @@ public class Agent extends Thread implements Runnable{
         return "Agent{" +
                 "currentPos=" + currentPos +
                 '}';
+    }
+
+    private void tempo() {
+        long tps = 20 + (long)(Math.random() * 80);
+        try {
+            sleep(tps);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 }

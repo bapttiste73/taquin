@@ -11,7 +11,7 @@ public class UITakin extends PApplet {
     /** 🛠 Paramètres 🛠 */
     final int cellSize = 100;
     final int nbCell = 4;
-    static final int nbAgent = 9;
+    static final int nbAgent = 7;
     /** 🛠 Paramètres 🛠 */
 
     int cols, rows;
@@ -29,7 +29,7 @@ public class UITakin extends PApplet {
     }
 
     public void setup(){
-        frameRate(60);
+        frameRate(1);
         for (Agent a : grid.getAgents()) {
             Thread t = new Thread(a);
             t.start();
@@ -76,10 +76,16 @@ public class UITakin extends PApplet {
     public void displayTarget(Agent a){
         fill(a.getColor().getRGB());
         rect(a.getTarget().getX()*cellSize, a.getTarget().getY()*cellSize, cellSize, cellSize);
+
     }
 
     public void displayAgent(Agent a){
         fill(a.getColor().getRGB());
         circle(a.getCurrentPos().getX()*cellSize + cellSize/2, a.getCurrentPos().getY()*cellSize + cellSize/2, cellSize*0.75f);
+
+        if(a.isWaiting()){
+            fill(a.getColor().getRGB());
+            rect(a.getCurrentPos().getX()*cellSize, a.getCurrentPos().getY()*cellSize, cellSize/3, cellSize/3);
+        }
     }
 }

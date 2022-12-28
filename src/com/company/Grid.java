@@ -75,10 +75,13 @@ public class Grid {
         return available;
     }
 
-    public void launch(){
+    public boolean isOver(){
         for (Agent a: this.getAgents()) {
-            a.calculateMinPath();
-            a.run();
+            if(!a.getCurrentPos().equals(a.getTarget())){
+                return false;
+            }
         }
+        return true;
+
     }
 }

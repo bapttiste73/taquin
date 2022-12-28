@@ -28,4 +28,9 @@ public class Message {
                 ", destination=" + destination +
                 '}';
     }
+
+    public void send(Agent receiver){
+        receiver.addMessage(this);
+    }
+
 }
