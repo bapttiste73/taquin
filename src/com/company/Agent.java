@@ -36,15 +36,10 @@ public class Agent extends Thread implements Runnable{
         if(this.getGrid().isOver()){
             return;
         }
-        if(this.getMessages().isEmpty()){
-            this.setWaiting(false);
-        }
 
         if(!this.getMessages().isEmpty()){
-            Message firstMessage = this.getMessages().get(this.getMessages().size()-1);
-            System.out.println(firstMessage);
-            this.handleMessage(firstMessage);
-            this.setWaiting(true);
+            Message lastMessage = this.getMessages().get(this.getMessages().size()-1);
+            this.handleMessage(lastMessage);
         }else if(!path.isEmpty()) {
             Position newPosition = path.get(0);
             Agent blockingAgent = this.moveBlockedByAgent(newPosition);
@@ -93,17 +88,12 @@ public class Agent extends Thread implements Runnable{
     }
 
     public Agent moveBlockedByAgent(Position p){
-//        lock.lock();
-        try {
-            for (Agent a: this.grid.getAgents()) {
-                if(p.equals(a.getCurrentPos())){
-                    return a;
-                }
+        for (Agent a: this.grid.getAgents()) {
+            if(p.equals(a.getCurrentPos())){
+                return a;
             }
-            return null;
-        } finally {
-//            lock.unlock();
         }
+        return null;
     }
 
     public ArrayList<Position> calculateMinPath(){
@@ -176,7 +166,6 @@ public class Agent extends Thread implements Runnable{
                 p.setY(p.getY()-1);
                 break;
             default:
-                System.out.println("probl_me");
                 break;
         }
         return p;
@@ -184,13 +173,12 @@ public class Agent extends Thread implements Runnable{
 
     public void handleMessage(Message message){
         if(message != null) {
-
-                Queue<Position> queue = new PriorityQueue<Position>(
+                Queue<Position> queue = new PriorityQueue<>(
                         3,
                         Comparator.comparingInt(p -> ((this.getGrid().positionIsAvailable(p) ? 25 : 50) - 10))
                 );
 
-            for (Position p : this.findNeighbors(this.getCurrentPos())) {
+            for (Position p : this.findNeighbors(this.getCurrentPos())) { //On ajoute positions voisines ou il y a un agent
                 Agent a = this.moveBlockedByAgent(p);
                 if ((a == null) || !message.getSender().equals(a)) {
                     queue.add(p);
@@ -201,15 +189,15 @@ public class Agent extends Thread implements Runnable{
             while (!queue.isEmpty() && !moved) {
                 Position current = queue.poll();
                 boolean free = true;
-                if (!this.getGrid().positionIsAvailable(current)) {
+                if (!this.moveAllowedInGrid(current)) {
                     free = message.getSender().move(this.getDirectionFromPosition(message.getSender().getCurrentPos(),current));
                 }
-                moved = free && move(this.getDirectionFromPosition(this.getCurrentPos(), current));
+                moved = free && this.move(this.getDirectionFromPosition(this.getCurrentPos(), current));
             }
 
             if(moved){
-                this.setWaiting(false);
                 this.getMessages().remove(message);
+                this.setWaiting(true);
                 tempo();
             }
         }
@@ -281,7 +269,7 @@ public class Agent extends Thread implements Runnable{
     }
 
     private void tempo() {
-        long tps = 20 + (long)(Math.random() * 80);
+        long tps = 10 + (long)(Math.random() * 40);
         try {
             sleep(tps);
         } catch (InterruptedException e) {
