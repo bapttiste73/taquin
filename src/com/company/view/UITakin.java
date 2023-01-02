@@ -4,14 +4,13 @@ import com.company.Agent;
 import com.company.Grid;
 import processing.core.PApplet;
 
-import static java.lang.Thread.sleep;
 
 public class UITakin extends PApplet {
 
     /** 🛠 Paramètres 🛠 */
     final int cellSize = 100;
-    final int nbCell = 4;
-    static final int nbAgent = 11;
+    final int nbCell = 5;
+    static final int nbAgent = 18;
     /** 🛠 Paramètres 🛠 */
 
     int cols, rows;
@@ -29,7 +28,7 @@ public class UITakin extends PApplet {
     }
 
     public void setup(){
-        frameRate(30);
+        frameRate(100);
         for (Agent a : grid.getAgents()) {
             Thread t = new Thread(a);
             t.start();
@@ -38,16 +37,13 @@ public class UITakin extends PApplet {
 
     public void background(){
         for (int i = 0; i < cols; i++) {
-            // Begin loop for rows
             for (int j = 0; j < rows; j++) {
 
-                // Scaling up to draw a rectangle at (x,y)
                 int x = i * cellSize;
                 int y = j * cellSize;
                 fill(255);
                 stroke(0);
 
-                // For every column and row, a rectangle is drawn at an (x,y) location scaled and sized by videoScale.
                 rect(x, y, cellSize, cellSize);
             }
         }

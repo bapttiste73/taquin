@@ -32,25 +32,26 @@ public class Agent extends Thread implements Runnable{
     @Override
     public void run() {
 
-        List<Position> path = this.calculateMinPath();
-        if(this.getGrid().isOver()){
-            return;
-        }
-
-        if(!this.getMessages().isEmpty()){
-            Message lastMessage = this.getMessages().get(this.getMessages().size()-1);
-            this.handleMessage(lastMessage);
-        }else if(!path.isEmpty()) {
-            Position newPosition = path.get(0);
-            Agent blockingAgent = this.moveBlockedByAgent(newPosition);
-
-            if(blockingAgent != null){
-                Message m = new Message(this, newPosition);
-                m.send(blockingAgent); // On envoie le message à l'agent qui bloque
-            }else{
-                this.move(this.getDirectionFromPosition(this.getCurrentPos(), newPosition));
+            List<Position> path = this.calculateMinPath();
+            if(this.getGrid().isOver()){
+                return;
             }
-        }
+
+            if(!this.getMessages().isEmpty()){
+                Message lastMessage = this.getMessages().get(this.getMessages().size()-1);
+                this.handleMessage(lastMessage);
+            }else if(!path.isEmpty()) {
+                Position newPosition = path.get(0);
+                Agent blockingAgent = this.moveBlockedByAgent(newPosition);
+
+                if(blockingAgent != null){
+                    Message m = new Message(this, newPosition);
+                    m.send(blockingAgent); // On envoie le message à l'agent qui bloque
+                }else{
+                    this.move(this.getDirectionFromPosition(this.getCurrentPos(), newPosition));
+                }
+
+            }
     }
 
     public boolean move(Direction d){
@@ -62,13 +63,17 @@ public class Agent extends Thread implements Runnable{
             this.setCurrentPos(newPosition);
             moved = true;
         } else {
+            Agent a = this.moveBlockedByAgent(newPosition);
+            if(a != null){
+                Message m = new Message(this, newPosition);
+                m.send(a); // On envoie le message à l'agent qui bloque
+            }
             //Si il est bloqué par un agent
             System.out.println("erreur Move interdit");
             System.out.println(this.getCurrentPos());
             System.out.println(newPosition);
             System.out.println("---");
         }
-        tempo();
         return moved;
 
 
@@ -173,32 +178,35 @@ public class Agent extends Thread implements Runnable{
 
     public void handleMessage(Message message){
         if(message != null) {
-                Queue<Position> queue = new PriorityQueue<>(
-                        3,
-                        Comparator.comparingInt(p -> ((this.getGrid().positionIsAvailable(p) ? 25 : 50) - 10))
-                );
+            Queue<Position> messageQueue = new PriorityQueue<>(
+                3,
+                Comparator.comparingInt(p ->  ((this.getGrid().positionIsAvailable(p) ? 25 : 50) - (int) (Math.random()*10)))
+            );
 
-            for (Position p : this.findNeighbors(this.getCurrentPos())) { //On ajoute positions voisines ou il y a un agent
+            for (Position p : this.findNeighbors(this.getCurrentPos())) { //On ajoute positions voisines
                 Agent a = this.moveBlockedByAgent(p);
-                if ((a == null) || !message.getSender().equals(a)) {
-                    queue.add(p);
+                if (!message.getSender().equals(a)) {
+                    messageQueue.add(p);
                 }
             }
 
             boolean moved = false;
-            while (!queue.isEmpty() && !moved) {
-                Position current = queue.poll();
+            this.setWaiting(false);
+            while (!messageQueue.isEmpty() && !moved) {
+                Position current = messageQueue.poll();
                 boolean free = true;
-                if (!this.moveAllowedInGrid(current)) {
+
+                if (!this.moveAllowed(current)) {
                     free = message.getSender().move(this.getDirectionFromPosition(message.getSender().getCurrentPos(),current));
                 }
+
                 moved = free && this.move(this.getDirectionFromPosition(this.getCurrentPos(), current));
             }
 
             if(moved){
                 this.getMessages().remove(message);
                 this.setWaiting(true);
-                tempo();
+                temp(20);
             }
         }
     }
@@ -268,10 +276,17 @@ public class Agent extends Thread implements Runnable{
                 '}';
     }
 
-    private void tempo() {
-        long tps = 10 + (long)(Math.random() * 40);
+    private void temp() {
         try {
-            sleep(tps);
+            Thread.sleep(100);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void temp(int duration) {
+        try {
+            Thread.sleep(duration);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

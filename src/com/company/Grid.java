@@ -7,7 +7,7 @@ import java.util.List;
 
 public class Grid {
 
-    public static final int gridSize = 4;
+    public static final int gridSize = 5;
 
     ArrayList<Agent> agents = new ArrayList<>();
     HashMap<Integer, Position> cases = new HashMap<>();
@@ -38,22 +38,6 @@ public class Grid {
 
 
         }
-//        Position{x=3, y=3}
-//        Position{x=3, y=0}
-//        Position{x=4, y=4}
-//        --------------
-//                Position{x=3, y=4}
-//        Position{x=2, y=4}
-//        Position{x=3, y=0}
-
-//        Agent a = new Agent(new Position(0,0), new Position(3,0), this);
-//        this.addAgent(a);
-//
-//        Agent b = new Agent(new Position(3,0), new Position(1,0), this);
-//        this.addAgent(b);
-
-//        Agent c = new Agent(new Position(4,4), new Position(3,0), this);
-//        this.addAgent(c);
     }
 
 
