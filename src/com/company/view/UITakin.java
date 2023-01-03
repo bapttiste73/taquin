@@ -10,7 +10,7 @@ public class UITakin extends PApplet {
     /** 🛠 Paramètres 🛠 */
     final int cellSize = 100;
     final int nbCell = 5;
-    static final int nbAgent = 18;
+    static final int nbAgent = 16;
     /** 🛠 Paramètres 🛠 */
 
     int cols, rows;

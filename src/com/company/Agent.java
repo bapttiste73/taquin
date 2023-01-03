@@ -68,11 +68,6 @@ public class Agent extends Thread implements Runnable{
                 Message m = new Message(this, newPosition);
                 m.send(a); // On envoie le message à l'agent qui bloque
             }
-            //Si il est bloqué par un agent
-            System.out.println("erreur Move interdit");
-            System.out.println(this.getCurrentPos());
-            System.out.println(newPosition);
-            System.out.println("---");
         }
         return moved;
 
